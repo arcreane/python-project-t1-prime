@@ -1,6 +1,6 @@
 import random
-from .aircraft import Aircraft
-from .airport import Airport
+from simulation.aircraft import Aircraft
+from simulation.airport import Airport
 
 
 class SimulationEngine:
@@ -10,24 +10,49 @@ class SimulationEngine:
         self.score = 0
         self.time_elapsed = 0
 
-    def spawn_aircraft(self):
-        """Génère un avion aléatoire (Gamification: difficulté croissante)"""
-        # [cite: 33]
-        callsign = f"AF{random.randint(100, 999)}"
-        # Apparition sur les bords
-        x = random.choice([0, 800])
-        y = random.randint(0, 600)
-        heading = random.randint(0, 360)
+        # --- CORRECTION 1 : On fait apparaître des avions tout de suite ! ---
+        self.spawn_aircraft()
+        self.spawn_aircraft()
+        self.spawn_aircraft()
 
-        new_plane = Aircraft(callsign, x, y, heading, speed=400, altitude=5000)
+    def spawn_aircraft(self):
+        """Génère un avion qui rentre DANS l'écran (Logique corrigée)."""
+        callsign = f"AF{random.randint(100, 999)}"
+
+        # On choisit un côté au hasard : 0=Gauche, 1=Droite, 2=Haut, 3=Bas
+        side = random.randint(0, 3)
+
+        if side == 0:  # Gauche -> Doit voler vers la droite (Est)
+            x = 0
+            y = random.randint(50, 550)
+            heading = random.randint(45, 135)  # Entre Nord-Est et Sud-Est
+
+        elif side == 1:  # Droite -> Doit voler vers la gauche (Ouest)
+            x = 800
+            y = random.randint(50, 550)
+            heading = random.randint(225, 315)  # Entre Sud-Ouest et Nord-Ouest
+
+        elif side == 2:  # Haut -> Doit voler vers le bas (Sud)
+            x = random.randint(50, 750)
+            y = 0
+            heading = random.randint(135, 225)  # Vers le Sud
+
+        else:  # Bas -> Doit voler vers le haut (Nord)
+            x = random.randint(50, 750)
+            y = 600
+            heading = random.randint(315, 405)  # Vers le Nord
+
+        # Création de l'avion
+        new_plane = Aircraft(callsign, x, y, heading, speed=280, altitude=5000)
         self.aircrafts.append(new_plane)
+        print(f"SPAWN: {callsign} en ({x}, {y}) Cap {heading}°")
 
     def update(self, dt: float):
         """Boucle principale de simulation"""
         self.time_elapsed += dt
 
-        # Mise à jour des positions
-        for plane in self.aircrafts:
+        # Mise à jour des positions (sur une COPIE de la liste pour éviter les bugs de suppression)
+        for plane in self.aircrafts[:]:
             plane.update_position(dt)
 
             # Vérification atterrissage
@@ -37,11 +62,19 @@ class SimulationEngine:
                 self.aircrafts.remove(plane)
                 print(f"{plane.callsign} Atterrissage réussi !")
 
-        # Vérification collisions [cite: 29]
+            # Suppression si l'avion n'est plus actif (crash ou sorti de map si besoin)
+            elif not plane.active:
+                self.aircrafts.remove(plane)
+
+        # [cite_start]Vérification collisions [cite: 29]
         self.check_collisions()
 
-        # Spawn aléatoire
-        if random.random() < 0.01:  # 1% de chance par frame
+        # --- CORRECTION 2 : Spawn aléatoire ---
+        # On augmente un peu la chance : 0.01 -> 0.02 (2% par frame)
+        # Mais surtout, on vérifie si la liste est vide pour en remettre un tout de suite
+        if len(self.aircrafts) == 0:
+            self.spawn_aircraft()
+        elif random.random() < 0.02:
             self.spawn_aircraft()
 
     def check_collisions(self):
@@ -52,4 +85,3 @@ class SimulationEngine:
                 # Si moins de 30 pixels et même altitude (à peu près)
                 if dist < 30 and abs(p1.altitude - p2.altitude) < 300:
                     print(f"COLLISION DANGER: {p1.callsign} <-> {p2.callsign}")
-                    # Ici on pourrait déduire des points ou arrêter le jeu

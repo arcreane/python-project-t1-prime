@@ -18,17 +18,16 @@ class Aircraft:
         if not self.active:
             return
 
-        # Conversion vitesse (km/h -> pixels/s arbitraire pour la simu)
-        # On simplifie : 1 unite = 1 pixel
-        pixel_speed = self.speed * 0.1
+        # MODIFICATION ICI : On passe de 0.1 à 0.03 pour ralentir le mouvement
+        pixel_speed = self.speed * 0.03
 
         # Calcul trigonométrique pour le déplacement X/Y
-        rad = math.radians(self.heading - 90)  # -90 pour ajuster le 0° au Nord
+        rad = math.radians(self.heading - 90)
         self.x += math.cos(rad) * pixel_speed * dt
         self.y += math.sin(rad) * pixel_speed * dt
 
-        # Consommation carburant
-        self.fuel -= 0.5 * dt
+        # Consommation carburant (ralentie aussi pour ne pas tomber en panne trop vite)
+        self.fuel -= 0.1 * dt
         if self.fuel <= 0:
             self.active = False
             print(f"CRASH: {self.callsign} panne d'essence !")
