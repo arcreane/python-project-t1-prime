@@ -2,30 +2,33 @@ import math
 
 
 class Aircraft:
-    def __init__(self, id, x, y, altitude, speed, heading):
-        self.id = id
+    def __init__(self, callsign: str, x: float, y: float, heading: float, speed: float, altitude: int):
+        self.callsign = callsign
         self.x = x
         self.y = y
+        self.heading = heading  # En degrés (0-360)
+        self.speed = speed  # En km/h (sera converti pour la simu)
         self.altitude = altitude
-        self.speed = speed  # Vitesse (en nœuds)
-        self.heading = heading  # Cap (en degrés, 0=Nord, 90=Est)
+        self.fuel = 100.0  # Pourcentage
+        self.landing_requested = False
+        self.active = True  # Si False, l'avion a atterri ou crashé
 
-    def move(self):
-        """
-        Met à jour la position de l'avion en fonction de sa vitesse et de son cap.
-        C'est une simulation TRÈS simpliste !
-        """
-        # Convertir le cap en radians (math.sin/cos s'attendent à des radians)
-        # Et ajuster pour le système de coordonnées (0° = Nord)
-        rad_heading = math.radians(90 - self.heading)
+    def update_position(self, dt: float):
+        """Met à jour la position (dt = delta time en secondes)."""
+        if not self.active:
+            return
 
-        # Vitesse "par tick". On divise par 3600 (secondes/heure) et 10 (ticks/seconde)
-        # C'est un exemple, la physique est à affiner !
-        distance_per_tick = self.speed / 360
+        # Conversion vitesse (km/h -> pixels/s arbitraire pour la simu)
+        # On simplifie : 1 unite = 1 pixel
+        pixel_speed = self.speed * 0.1
 
-        self.x += distance_per_tick * math.cos(rad_heading)
-        # Attention: en QGraphicsView, Y est inversé (vers le bas)
-        self.y -= distance_per_tick * math.sin(rad_heading)
+        # Calcul trigonométrique pour le déplacement X/Y
+        rad = math.radians(self.heading - 90)  # -90 pour ajuster le 0° au Nord
+        self.x += math.cos(rad) * pixel_speed * dt
+        self.y += math.sin(rad) * pixel_speed * dt
 
-    def __repr__(self):
-        return f"Aircraft(id={self.id}, pos=({self.x}, {self.y}))"
+        # Consommation carburant
+        self.fuel -= 0.5 * dt
+        if self.fuel <= 0:
+            self.active = False
+            print(f"CRASH: {self.callsign} panne d'essence !")
