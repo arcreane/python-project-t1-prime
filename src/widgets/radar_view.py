@@ -42,9 +42,12 @@ class RadarView(QGraphicsView):
 
             # Gestion des couleurs
             color = Qt.yellow
-            if plane.landing_requested: color = Qt.green
-
-            if plane.fuel < 20: color = Qt.red  # [cite: 71]
+            if plane.landing_requested:
+                color = Qt.green
+            if plane.fuel < 20:
+                color = QColor("orange")
+            if plane.warning:
+                color = Qt.red
 
             # --- MISE À JOUR OU CRÉATION ---
             if plane.callsign in self.aircraft_items:
@@ -55,24 +58,24 @@ class RadarView(QGraphicsView):
                 items['ellipse'].setBrush(QBrush(color))
 
                 items['text'].setPos(plane.x + 10, plane.y)
-                items['text'].setPlainText(f"{plane.callsign}\n{plane.altitude}ft")
+                # CORRECTION ICI : int(plane.altitude) pour arrondir
+                items['text'].setPlainText(f"{plane.callsign}\n{int(plane.altitude)}ft")
                 items['text'].setDefaultTextColor(color)
             else:
                 # Création nouvelle
-                # 1. Le point (Avion)
                 ellipse = self.scene.addEllipse(plane.x - 5, plane.y - 5, 10, 10, QPen(color), QBrush(color))
-                ellipse.setZValue(10)  # S'assure que le point est au-dessus
-                ellipse.setData(0, plane.callsign)  # IMPORTANT: Stocke l'ID pour le clic
+                ellipse.setZValue(10)
+                ellipse.setData(0, plane.callsign)
 
-                # 2. Le texte (Info)
-                text = self.scene.addText(f"{plane.callsign}\n{plane.altitude}ft")
+                # CORRECTION ICI AUSSI
+                text = self.scene.addText(f"{plane.callsign}\n{int(plane.altitude)}ft")
                 text.setDefaultTextColor(color)
                 text.setPos(plane.x + 10, plane.y)
-                text.setData(0, plane.callsign)  # IMPORTANT: Le texte devient aussi cliquable !
+                text.setData(0, plane.callsign)
 
                 self.aircraft_items[plane.callsign] = {'ellipse': ellipse, 'text': text}
 
-        # Nettoyage des avions disparus
+        # Nettoyage
         known_callsigns = list(self.aircraft_items.keys())
         for callsign in known_callsigns:
             if callsign not in active_callsigns:

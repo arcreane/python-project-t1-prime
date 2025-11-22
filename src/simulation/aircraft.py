@@ -12,7 +12,7 @@ class Aircraft:
         self.fuel = 100.0  # Pourcentage
         self.landing_requested = False
         self.active = True  # Si False, l'avion a atterri ou crashé
-
+        self.warning = False  # True si risque de collision
     def update_position(self, dt: float):
         """Met à jour la position (dt = delta time en secondes)."""
         if not self.active:
