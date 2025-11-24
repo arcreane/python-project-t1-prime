@@ -13,21 +13,26 @@ class Aircraft:
         self.landing_requested = False
         self.active = True  # Si False, l'avion a atterri ou crashé
         self.warning = False  # True si risque de collision
+        self.holding = False  # Si True, l'avion part en circuit d'attente
+        self.emergency_type = None
     def update_position(self, dt: float):
         """Met à jour la position (dt = delta time en secondes)."""
         if not self.active:
             return
 
-        # MODIFICATION ICI : On passe de 0.1 à 0.03 pour ralentir le mouvement
-        pixel_speed = self.speed * 0.03
+        # 1. VITESSE : On réduit le coefficient (0.03 -> 0.015)
+        # Les avions iront 2 fois moins vite.
+        pixel_speed = self.speed * 0.015
 
-        # Calcul trigonométrique pour le déplacement X/Y
+        # Calcul trigonométrique
         rad = math.radians(self.heading - 90)
         self.x += math.cos(rad) * pixel_speed * dt
         self.y += math.sin(rad) * pixel_speed * dt
 
-        # Consommation carburant (ralentie aussi pour ne pas tomber en panne trop vite)
-        self.fuel -= 0.1 * dt
+        # 2. CARBURANT : On réduit aussi la consommation (0.1 -> 0.05)
+        # Sinon ils tomberont en panne car le vol est plus long !
+        self.fuel -= 0.05 * dt
+
         if self.fuel <= 0:
             self.active = False
             print(f"CRASH: {self.callsign} panne d'essence !")

@@ -4,28 +4,34 @@ from PySide6.QtCore import Qt, Signal
 
 
 class RadarView(QGraphicsView):
-    # Signal émis quand on clique sur un avion (renvoie son callsign)
     aircraft_selected = Signal(str)
 
     def __init__(self):
         super().__init__()
         self.scene = QGraphicsScene(0, 0, 800, 600)
         self.setScene(self.scene)
-        self.setBackgroundBrush(QBrush(QColor(30, 30, 30)))  # Fond radar sombre
+        self.setBackgroundBrush(QBrush(QColor(30, 30, 30)))
         self.setRenderHint(QPainter.Antialiasing)
 
-        # Stockage des items graphiques pour mise à jour optimisée
         self.aircraft_items = {}
 
+        # --- NOUVEAU : DESSINER LE POINT D'ATTENTE ---
+        # Coordonnées du point (150, 150)
+        self.scene.addEllipse(145, 145, 10, 10, QPen(Qt.cyan), QBrush(Qt.cyan))
+        text_hold = self.scene.addText("HOLD")
+        text_hold.setDefaultTextColor(Qt.cyan)
+        text_hold.setPos(135, 160)
+        # ---------------------------------------------
+
+    # ... (Le reste des méthodes draw_airport, update_radar, mousePressEvent reste identique)
+    # Si tu as besoin je peux te remettre tout le fichier, mais c'est juste l'init qui change ici.
+
     def draw_airport(self, airport):
-        # Dessine la piste (statique)
+        # ... (Garde ton code existant) ...
         pen = QPen(Qt.white)
         pen.setWidth(3)
         self.scene.addLine(airport.x - 20, airport.y, airport.x + 20, airport.y, pen)
-
-        # Cercle vert pour mieux voir l'aéroport
         self.scene.addEllipse(airport.x - 5, airport.y - 5, 10, 10, QPen(Qt.green), QBrush(Qt.green))
-
         text = self.scene.addText(airport.name)
         text.setDefaultTextColor(Qt.white)
         text.setPos(airport.x - 20, airport.y + 10)
@@ -40,35 +46,49 @@ class RadarView(QGraphicsView):
 
             active_callsigns.add(plane.callsign)
 
-            # Gestion des couleurs
-            color = Qt.yellow
+            # --- GESTION DES COULEURS (ORDRE DE PRIORITÉ) ---
+            color = Qt.yellow  # 1. Couleur par défaut (Vol normal)
+
             if plane.landing_requested:
-                color = Qt.green
-            if plane.fuel < 20:
-                color = QColor("orange")
-            if plane.warning:
+                color = Qt.green  # 2. Atterrissage
+            elif plane.holding:
+                color = QColor("orange")  # 3. Attente
+            elif plane.fuel < 20:
+                color = QColor("orange")  # 4. Fuel bas
+
+            # 5. Pannes / Urgences (Important)
+            if plane.emergency_type is not None:
                 color = Qt.red
 
-            # --- MISE À JOUR OU CRÉATION ---
+            # 6. RISQUE COLLISION (PRIORITÉ ABSOLUE)
+            # C'est ce bloc qui manquait ou était mal placé !
+            if plane.warning:
+                color = Qt.red
+            # ------------------------------------------------
+
+            # Préparation du texte
+            label_text = f"{plane.callsign}\n{int(plane.altitude)}ft"
+            if plane.emergency_type:
+                label_text += f"\n⚠️ {plane.emergency_type}"
+            if plane.warning:  # On ajoute aussi un petit texte visuel
+                label_text += "\n⚠️ COLLISION ?"
+
+            # --- DESSIN ---
             if plane.callsign in self.aircraft_items:
-                # Mise à jour existante
                 items = self.aircraft_items[plane.callsign]
                 items['ellipse'].setRect(plane.x - 5, plane.y - 5, 10, 10)
                 items['ellipse'].setPen(QPen(color))
                 items['ellipse'].setBrush(QBrush(color))
 
                 items['text'].setPos(plane.x + 10, plane.y)
-                # CORRECTION ICI : int(plane.altitude) pour arrondir
-                items['text'].setPlainText(f"{plane.callsign}\n{int(plane.altitude)}ft")
+                items['text'].setPlainText(label_text)
                 items['text'].setDefaultTextColor(color)
             else:
-                # Création nouvelle
                 ellipse = self.scene.addEllipse(plane.x - 5, plane.y - 5, 10, 10, QPen(color), QBrush(color))
                 ellipse.setZValue(10)
                 ellipse.setData(0, plane.callsign)
 
-                # CORRECTION ICI AUSSI
-                text = self.scene.addText(f"{plane.callsign}\n{int(plane.altitude)}ft")
+                text = self.scene.addText(label_text)
                 text.setDefaultTextColor(color)
                 text.setPos(plane.x + 10, plane.y)
                 text.setData(0, plane.callsign)
@@ -84,17 +104,9 @@ class RadarView(QGraphicsView):
                 del self.aircraft_items[callsign]
 
     def mousePressEvent(self, event):
-        """Gestion du clic robuste."""
-        # On récupère l'item sous la souris
         item = self.itemAt(event.pos())
-
         if item:
-            # On récupère la donnée "0" stockée (le callsign)
             callsign = item.data(0)
             if callsign:
-                print(f"Clic détecté sur : {callsign}")  # Debug console
                 self.aircraft_selected.emit(callsign)
-            else:
-                print("Item cliqué mais pas d'avion associé")
-
         super().mousePressEvent(event)
