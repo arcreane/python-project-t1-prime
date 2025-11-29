@@ -53,7 +53,7 @@ class SimulationEngine:
         # --- AJOUT RÉALISME CARBURANT ---
         # En approche, le réservoir n'est jamais plein.
         # On génère une valeur entre 15% (Critique) et 40% (Confortable)
-        new_plane.fuel = random.randint(15, 40)
+        new_plane.fuel = random.randint(25, 40)
         # --------------------------------
 
         self.aircrafts.append(new_plane)
